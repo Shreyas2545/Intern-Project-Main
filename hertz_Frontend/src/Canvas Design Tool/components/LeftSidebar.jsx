@@ -43,13 +43,14 @@ const LeftSidebar = () => {
   const [selectedTool, setSelectedTool] = useState(null);
   const panelRef = useRef(null);
   const iconRefs = useRef({});
-  const { addDesignElement } = useContext(DesignContext);
+  const { addDesignElement, designElements, currentView } =
+    useContext(DesignContext);
 
-  // Function to add a text element
+  // Function to add a text element with all toolbar properties
   const onAddText = (text) => {
     addDesignElement({
       type: "text",
-      content: text,
+      content: text || "New Text",
       x: 50,
       y: 50,
       width: 200,
@@ -59,7 +60,72 @@ const LeftSidebar = () => {
       color: "#000000",
       fontFamily: "Arial",
       fontWeight: "normal",
+      fontStyle: "normal",
+      textDecoration: "none",
       textAlign: "center",
+      backgroundColor: "transparent",
+      stroke: null,
+      strokeWidth: 0,
+      opacity: 1,
+      isCurved: false,
+      zIndex: designElements.length,
+      view: currentView,
+      rotation: 0,
+      borderRadius: 0,
+    });
+  };
+
+  // Function to add an image element with all toolbar properties
+  const onAddImage = (file) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      alert("Please select a valid image file");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      alert("Image file size must be under 10MB");
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    addDesignElement({
+      type: "image",
+      content: url,
+      x: 50,
+      y: 50,
+      width: 200,
+      height: 200,
+      id: `image-${Date.now()}`,
+      opacity: 1,
+      filter: "none",
+      hue: 0,
+      sat: 1,
+      br: 1,
+      borderRadius: 0,
+      zIndex: designElements.length,
+      view: currentView,
+      rotation: 0,
+    });
+  };
+
+  // Function to add a graphic element with all toolbar properties
+  const onAddGraphic = (shapeType = "square") => {
+    addDesignElement({
+      type: "graphic",
+      shapeType,
+      x: 50,
+      y: 50,
+      width: 100,
+      height: 100,
+      id: `graphic-${Date.now()}`,
+      fillColor: "#cccccc",
+      strokeColor: "transparent",
+      strokeWidth: 0,
+      strokeStyle: "solid",
+      opacity: 1,
+      flip: null,
+      zIndex: designElements.length,
+      view: currentView,
+      rotation: 0,
     });
   };
 
@@ -69,13 +135,12 @@ const LeftSidebar = () => {
   useEffect(() => {
     if (!selectedTool) return;
 
-    // Always position relative to the icon
+    // Position panel relative to the icon
     const icon = iconRefs.current[selectedTool];
     if (icon) {
       const rect = icon.getBoundingClientRect();
-      // Default: open to the right of icon
       setPanelPos({
-        top: rect.top + rect.height / 2 - 40, // Centered vertically
+        top: rect.top + rect.height / 2 - 40,
         left: rect.right + 10,
       });
     }
@@ -128,7 +193,12 @@ const LeftSidebar = () => {
     return isSelected ? colors.selected : `${colors.default} ${colors.hover}`;
   };
 
-  const currentPanelProps = selectedTool === "text" ? { onAddText } : {};
+  const currentPanelProps = {
+    text: { onAddText },
+    images: { onAddImage },
+    graphics: { onAddGraphic },
+    background: {},
+  };
 
   // --- Use portal to move panel outside sidebar z-index stack ---
   const popupPanel = selectedTool
@@ -149,7 +219,7 @@ const LeftSidebar = () => {
           >
             <div className="p-6">
               {React.createElement(PanelMap[selectedTool], {
-                ...currentPanelProps,
+                ...currentPanelProps[selectedTool],
                 addDesignElement,
                 onClose: () => setSelectedTool(null),
               })}

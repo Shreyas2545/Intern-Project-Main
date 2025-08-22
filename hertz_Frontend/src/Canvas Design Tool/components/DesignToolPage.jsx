@@ -26,7 +26,6 @@ import html2canvas from "html2canvas";
 
 export const DesignContext = createContext();
 
-// Backend base URL — used consistently for all design API calls
 const API_BASE_URL = "http://localhost:8000/api/v1";
 
 const CanvasShapeModal = ({ isOpen, onClose, onSelectShape, isAdmin }) => {
@@ -160,78 +159,74 @@ const CanvasShapeModal = ({ isOpen, onClose, onSelectShape, isAdmin }) => {
               <motion.button
                 key={shape.id}
                 onClick={() => handleShapeSelect(shape)}
-                className={`p-6 rounded-2xl border-2 transition-all duration-200 text-left ${getShapeStyles(
+                className={`p-6 rounded-2xl border-2 transition-all duration-200 ${getShapeStyles(
                   shape,
                   selectedShape === shape.id
                 )}`}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
               >
-                <div className="flex items-center space-x-4">
-                  <shape.icon className="w-8 h-8" />
-                  <div>
-                    <h3 className="text-lg font-semibold">{shape.name}</h3>
-                    <p className="text-sm text-gray-500">{shape.description}</p>
-                    <p className="text-sm font-medium">
-                      {shape.id !== "custom"
-                        ? `${shape.dimensions.width} x ${shape.dimensions.height} px`
-                        : `Custom: ${customDimensions.width} x ${customDimensions.height} px`}
-                    </p>
-                  </div>
+                <div className="flex flex-col items-center text-center">
+                  <shape.icon className="w-12 h-12 mb-4" />
+                  <h3 className="text-lg font-semibold mb-1">{shape.name}</h3>
+                  <p className="text-sm text-gray-500">{shape.description}</p>
                 </div>
               </motion.button>
             ))}
           </div>
 
           {isAdmin && selectedShape === "custom" && (
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900">
-                Custom Canvas Settings
-              </h3>
-              <div className="flex space-x-4">
-                <div className="flex-1">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Width (px)
-                  </label>
-                  <input
-                    type="number"
-                    value={customDimensions.width}
-                    onChange={(e) =>
-                      setCustomDimensions({
-                        ...customDimensions,
-                        width: parseInt(e.target.value) || 1050,
-                      })
-                    }
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
-                  />
-                </div>
-                <div className="flex-1">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Height (px)
-                  </label>
-                  <input
-                    type="number"
-                    value={customDimensions.height}
-                    onChange={(e) =>
-                      setCustomDimensions({
-                        ...customDimensions,
-                        height: parseInt(e.target.value) || 600,
-                      })
-                    }
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
-                  />
-                </div>
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-4"
+            >
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Width
+                </label>
+                <input
+                  type="number"
+                  value={customDimensions.width}
+                  onChange={(e) =>
+                    setCustomDimensions({
+                      ...customDimensions,
+                      width: parseInt(e.target.value) || 800,
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  min="100"
+                />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Height
+                </label>
+                <input
+                  type="number"
+                  value={customDimensions.height}
+                  onChange={(e) =>
+                    setCustomDimensions({
+                      ...customDimensions,
+                      height: parseInt(e.target.value) || 800,
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  min="100"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Background Color
                 </label>
                 <input
                   type="color"
                   value={customBackground}
                   onChange={(e) => setCustomBackground(e.target.value)}
-                  className="mt-1 block w-full h-10 rounded-md border-gray-300 shadow-sm"
+                  className="w-full h-10 rounded-md cursor-pointer"
                 />
               </div>
-            </div>
+            </motion.div>
           )}
         </motion.div>
       </motion.div>
@@ -240,424 +235,386 @@ const CanvasShapeModal = ({ isOpen, onClose, onSelectShape, isAdmin }) => {
 };
 
 const DesignToolPage = () => {
-  const { productId, designId } = useParams();
+  const { productId: productIdFromParams } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
-  const [isAdmin, setIsAdmin] = useState(true);
+  const canvasRef = useRef(null);
+  const prevDesignElementsRef = useRef([]);
+
   const [projectName, setProjectName] = useState("Untitled Design");
   const [designElements, setDesignElements] = useState([]);
-  const [history, setHistory] = useState([]);
-  const [historyIndex, setHistoryIndex] = useState(-1);
   const [selectedElementId, setSelectedElementId] = useState(null);
   const [currentView, setCurrentView] = useState("Front");
   const [zoomLevel, setZoomLevel] = useState(100);
   const [canvasSize, setCanvasSize] = useState({ width: 1050, height: 600 });
   const [canvasShape, setCanvasShape] = useState("rectangle");
   const [canvasBackground, setCanvasBackground] = useState("#ffffff");
-  const canvasRef = useRef(null);
-  const [canvasPosition, setCanvasPosition] = useState({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [showCanvasModal, setShowCanvasModal] = useState(!designId);
-  const [showUnsupportedWarning, setShowUnsupportedWarning] = useState(false);
+  const [history, setHistory] = useState([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isIconModalOpen, setIsIconModalOpen] = useState(false);
-  const [isCreating, setIsCreating] = useState(!designId);
-  const [isEditing, setIsEditing] = useState(!!designId);
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const [designIdState, setDesignIdState] = useState(designId || null);
+  const [showCanvasModal, setShowCanvasModal] = useState(true);
+  const [showUnsupportedWarning, setShowUnsupportedWarning] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [designIdState, setDesignId] = useState(null);
 
-  // Fetch design by productId or designId when component mounts
-  useEffect(() => {
-    const fetchDesign = async () => {
-      try {
-        let response;
-        if (designId) {
-          // use backend base URL explicitly
-          response = await axios.get(`${API_BASE_URL}/designs/${designId}`);
-        } else if (productId) {
-          response = await axios.get(
-            `${API_BASE_URL}/designs/product/${productId}`
-          );
-        }
-        if (response?.data?.success && response.data.data) {
-          const design = response.data.data;
+  // Sanitize color function to handle unsupported color formats
+  function sanitizeColor(color) {
+    if (typeof color !== "string") return "#ffffff";
+    const cleanedColor = color
+      .replace(/oklab\(.*\)/i, "")
+      .replace(/lab\(.*\)/i, "")
+      .replace(/lch\(.*\)/i, "")
+      .replace(/color\(.*\)/i, "");
 
-          // defensive parsing: server might send canvasSize/designElements as strings
-          try {
-            const parsedSize =
-              typeof design.canvasSize === "string"
-                ? JSON.parse(design.canvasSize)
-                : design.canvasSize;
-            if (parsedSize?.width && parsedSize?.height) {
-              setCanvasSize(parsedSize);
-            }
-          } catch (e) {
-            // ignore parse error, leave canvasSize as-is
-            console.warn("Unable to parse canvasSize from server:", e);
-          }
-
-          try {
-            const parsedBg =
-              typeof design.canvasBackground === "string" &&
-              (design.canvasBackground.trim().startsWith("{") ||
-                design.canvasBackground.trim().startsWith("["))
-                ? JSON.parse(design.canvasBackground)
-                : design.canvasBackground;
-            if (parsedBg !== undefined) setCanvasBackground(parsedBg);
-          } catch (e) {
-            console.warn("Unable to parse canvasBackground from server:", e);
-            // fallback: set as-is
-            if (design.canvasBackground !== undefined)
-              setCanvasBackground(design.canvasBackground);
-          }
-
-          try {
-            const parsedElements =
-              typeof design.designElements === "string"
-                ? JSON.parse(design.designElements)
-                : design.designElements;
-            if (Array.isArray(parsedElements)) {
-              setDesignElements(parsedElements);
-              setHistory([parsedElements]);
-              setHistoryIndex(0);
-            } else {
-              // fallback if server stored differently
-              setDesignElements(design.designElements || []);
-              setHistory([design.designElements || []]);
-              setHistoryIndex(0);
-            }
-          } catch (e) {
-            console.warn("Unable to parse designElements from server:", e);
-            setDesignElements(design.designElements || []);
-            setHistory([design.designElements || []]);
-            setHistoryIndex(0);
-          }
-
-          setProjectName(design.projectName || projectName);
-          setCanvasShape(design.canvasShape || canvasShape);
-          setIsCreating(false);
-          setIsEditing(true);
-          setShowCanvasModal(false);
-          setDesignIdState(design._id || design.id || designIdState);
-        }
-      } catch (error) {
-        console.error("Error fetching design:", error);
-        if (error.response?.status !== 404) {
-          alert(
-            "Failed to load design: " +
-              (error.response?.data?.message || error.message)
-          );
-        } else {
-          // 404 = no design yet => remain in create mode silently
-          console.info("No saved design found for this product/design id.");
-        }
-      }
-    };
-
-    if (productId || designId) {
-      fetchDesign();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [productId, designId]);
-
-  // Mark changes as unsaved when designElements or other state changes
-  useEffect(() => {
-    setHasUnsavedChanges(true);
-  }, [designElements, projectName, canvasShape, canvasSize, canvasBackground]);
-
-  // Prompt to save changes before unloading
-  useEffect(() => {
-    const handleBeforeUnload = (e) => {
-      if (hasUnsavedChanges) {
-        e.preventDefault();
-        e.returnValue =
-          "You have unsaved changes. Do you want to save before leaving?";
-      }
-    };
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [hasUnsavedChanges]);
-
-  const addDesignElement = (element) => {
-    if (
-      !element.type ||
-      !["text", "image", "graphic", "icon", "table"].includes(element.type)
-    ) {
-      setShowUnsupportedWarning(true);
-      return;
-    }
-    const newElement = {
-      ...element,
-      id: `element-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      zIndex: designElements.length + 1,
-      view: currentView,
-    };
-    setDesignElements((prev) => [...prev, newElement]);
-    setHistory((prev) => [
-      ...prev.slice(0, historyIndex + 1),
-      [...designElements, newElement],
-    ]);
-    setHistoryIndex((prev) => prev + 1);
-  };
-
-  const updateDesignElement = (id, updates) => {
-    setDesignElements((prev) =>
-      prev.map((el) => (el.id === id ? { ...el, ...updates } : el))
+    const hexColor = cleanedColor.match(/^#(?:[0-9a-fA-F]{3}){1,2}$/i);
+    const rgbColor = cleanedColor.match(
+      /^rgb\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*\)$/i
     );
-    setHistory((prev) => [
-      ...prev.slice(0, historyIndex + 1),
-      designElements.map((el) => (el.id === id ? { ...el, ...updates } : el)),
-    ]);
-    setHistoryIndex((prev) => prev + 1);
-  };
+    const rgbaColor = cleanedColor.match(
+      /^rgba\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*[\d.]+\s*\)$/i
+    );
+    const hslColor = cleanedColor.match(
+      /^hsl\(\s*\d+\s*,\s*[\d.]+%?\s*,\s*[\d.]+%?\s*\)$/i
+    );
 
-  const deleteDesignElement = (id) => {
-    setDesignElements((prev) => prev.filter((el) => el.id !== id));
-    setHistory((prev) => [
-      ...prev.slice(0, historyIndex + 1),
-      designElements.filter((el) => el.id !== id),
-    ]);
-    setHistoryIndex((prev) => prev + 1);
-    if (selectedElementId === id) setSelectedElementId(null);
-  };
+    if (hexColor || rgbColor || rgbaColor || hslColor) {
+      return cleanedColor;
+    }
+    return "#ffffff";
+  }
 
-  const undo = () => {
+  // Load design if editing
+  useEffect(() => {
+    const loadDesign = async () => {
+      let designData = null;
+      let isEditing = false;
+      let designId = new URLSearchParams(location.search).get("designId");
+
+      if (productIdFromParams) {
+        // Try to load an existing design by product ID
+        try {
+          const res = await axios.get(`${API_BASE_URL}/designs/product/${productIdFromParams}`);
+          designData = res.data.data;
+          isEditing = true;
+          designId = designData._id;
+        } catch (err) {
+          // If no design found for the product, it's a new design
+          console.error("No existing design found for this product. Starting a new one.", err);
+          setIsCreating(true);
+          setShowCanvasModal(true);
+          return;
+        }
+      } else if (designId) {
+        // Fallback for direct design ID links
+        try {
+          const res = await axios.get(`${API_BASE_URL}/designs/${designId}`);
+          designData = res.data.data;
+          isEditing = true;
+        } catch (err) {
+          console.error("Failed to load design:", err);
+          navigate("/dashboard");
+          return;
+        }
+      } else {
+        // No ID in URL, must be a brand new design session
+        setIsCreating(true);
+        setShowCanvasModal(true);
+        return;
+      }
+
+      // If a design was successfully loaded
+      if (designData) {
+        setIsEditing(isEditing);
+        setDesignId(designId);
+        setProjectName(designData.projectName || "Untitled Design");
+        setCanvasShape(designData.canvasShape || "rectangle");
+        setCanvasSize(designData.canvasSize || { width: 1050, height: 600 });
+        setCanvasBackground(sanitizeColor(designData.canvasBackground || "#ffffff"));
+
+        // Sanitize colors of all design elements upon loading
+        const sanitizedElements = (designData.designElements || []).map(el => {
+            const newEl = { ...el };
+            if (newEl.type === 'text' && newEl.color) {
+                newEl.color = sanitizeColor(newEl.color);
+            }
+            if (newEl.type === 'image' && newEl.shadowColor) {
+                newEl.shadowColor = sanitizeColor(newEl.shadowColor);
+            }
+            if (newEl.type === 'graphic' && newEl.fillColor) {
+                newEl.fillColor = sanitizeColor(newEl.fillColor);
+            }
+            if (newEl.type === 'graphic' && newEl.strokeColor) {
+                newEl.strokeColor = sanitizeColor(newEl.strokeColor);
+            }
+            if (newEl.type === 'icon' && newEl.color) {
+                newEl.color = sanitizeColor(newEl.color);
+            }
+            return newEl;
+        });
+        setDesignElements(sanitizedElements);
+        setShowCanvasModal(false);
+      }
+    };
+    loadDesign();
+  }, [location, navigate, productIdFromParams]); //
+
+  // Save design
+  const saveDesign = useCallback(async () => {
+    setIsSaving(true);
+    try {
+      const canvasElement = canvasRef.current;
+      if (!canvasElement) throw new Error("Canvas element not found");
+      
+      const sanitizedElementsForSave = designElements.map(el => {
+        // Sanitize colors for each element before saving
+        const newEl = { ...el };
+        if (newEl.type === 'text' && newEl.color) {
+            newEl.color = sanitizeColor(newEl.color);
+        }
+        if (newEl.type === 'image' && newEl.shadowColor) {
+            newEl.shadowColor = sanitizeColor(newEl.shadowColor);
+        }
+        if (newEl.type === 'graphic' && newEl.fillColor) {
+            newEl.fillColor = sanitizeColor(newEl.fillColor);
+        }
+        if (newEl.type === 'graphic' && newEl.strokeColor) {
+            newEl.strokeColor = sanitizeColor(newEl.strokeColor);
+        }
+        if (newEl.type === 'icon' && newEl.color) {
+            newEl.color = sanitizeColor(newEl.color);
+        }
+        return newEl;
+      });
+
+      const canvas = await html2canvas(canvasElement, {
+        backgroundColor: null,
+        scale: 1,
+        useCORS: true,
+        foreignObjectRendering: false,
+        willReadFrequently: true,
+        windowWidth: canvasSize.width,
+        windowHeight: canvasSize.height,
+        logging: false,
+      });
+
+      const previewBlob = await new Promise((resolve) =>
+        canvas.toBlob(resolve, "image/png")
+      );
+      if (!previewBlob) throw new Error("Failed to generate preview image");
+
+      const formData = new FormData();
+      formData.append("previewImage", previewBlob, "preview.png");
+
+      const designData = {
+        projectName: projectName || "Untitled Design",
+        canvasShape: canvasShape || "rectangle",
+        canvasSize: canvasSize || { width: 1050, height: 600 },
+        canvasBackground: sanitizeColor(canvasBackground),
+        designElements: sanitizedElementsForSave || [],
+        productId: productIdFromParams || null,
+      };
+      formData.append("designData", JSON.stringify(designData));
+
+      let res;
+      if (designIdState) {
+        res = await axios.patch(
+          `${API_BASE_URL}/designs/${designIdState}`,
+          formData,
+          { headers: { "Content-Type": "multipart/form-data" } }
+        );
+      } else {
+        res = await axios.post(`${API_BASE_URL}/designs`, formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        setDesignId(res.data.data._id);
+      }
+      console.log("Design saved successfully");
+    } catch (err) {
+      console.error("Failed to save design:", err.message || err);
+      if (err.response?.status === 400) {
+        console.warn("Bad request - check payload or server validation:", err.response.data);
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  }, [
+    projectName,
+    canvasShape,
+    canvasSize,
+    canvasBackground,
+    designElements,
+    productIdFromParams,
+    designIdState,
+  ]);
+
+  const handleCanvasShapeSelect = useCallback(
+    (shape, dimensions, background) => {
+      setCanvasShape(shape);
+      setCanvasSize(dimensions);
+      setCanvasBackground(sanitizeColor(background));
+      setShowCanvasModal(false);
+    },
+    []
+  );
+
+  const addDesignElement = useCallback(
+    (element) => {
+      if (!element.type) {
+        setShowUnsupportedWarning(true);
+        return;
+      }
+      const newId = Date.now().toString();
+      const newElement = { 
+        ...element, 
+        id: newId,
+        // Sanitize color properties on add
+        ...(element.color && { color: sanitizeColor(element.color) }),
+        ...(element.shadowColor && { shadowColor: sanitizeColor(element.shadowColor) }),
+      };
+      setDesignElements((prev) => [...prev, newElement]);
+      setSelectedElementId(newId);
+    },
+    []
+  );
+
+  const updateDesignElement = useCallback(
+    (id, updates) => {
+      // Sanitize color properties in updates before applying them
+      const sanitizedUpdates = { ...updates };
+      if (sanitizedUpdates.color) {
+        sanitizedUpdates.color = sanitizeColor(sanitizedUpdates.color);
+      }
+      if (sanitizedUpdates.shadowColor) {
+        sanitizedUpdates.shadowColor = sanitizeColor(sanitizedUpdates.shadowColor);
+      }
+      
+      setDesignElements((prev) =>
+        prev.map((el) => (el.id === id ? { ...el, ...sanitizedUpdates } : el))
+      );
+    },
+    []
+  );
+
+  const deleteDesignElement = useCallback(
+    (id) => {
+      setDesignElements((prev) => prev.filter((el) => el.id !== id));
+      if (selectedElementId === id) setSelectedElementId(null);
+    },
+    [selectedElementId]
+  );
+
+  const updateCanvasBackground = useCallback(
+    (newBackground) => {
+      setCanvasBackground(sanitizeColor(newBackground));
+    },
+    []
+  );
+
+  const undo = useCallback(() => {
     if (historyIndex > 0) {
       setHistoryIndex((prev) => prev - 1);
       setDesignElements(history[historyIndex - 1]);
     }
-  };
+  }, [history, historyIndex]);
 
-  const redo = () => {
+  const redo = useCallback(() => {
     if (historyIndex < history.length - 1) {
       setHistoryIndex((prev) => prev + 1);
       setDesignElements(history[historyIndex + 1]);
     }
-  };
+  }, [history, historyIndex]);
 
   const canUndo = historyIndex > 0;
   const canRedo = historyIndex < history.length - 1;
 
-  const updateCanvasBackground = (color) => {
-    setCanvasBackground(color);
-  };
-
-  const handleCanvasShapeSelect = (shape, dimensions, background) => {
-    setCanvasShape(shape);
-    setCanvasSize(dimensions);
-    setCanvasBackground(background);
-    setShowCanvasModal(false);
-  };
-
-  // convert a blob: URL to base64 data URL
-  async function blobUrlToDataUrl(blobUrl) {
-    try {
-      const res = await fetch(blobUrl);
-      const blob = await res.blob();
-      return await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result); // data:image/png;base64,...
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
-    } catch (err) {
-      console.warn("Failed to convert blob URL to dataURL:", err);
-      return null;
+  // Fix the history effect to properly manage state changes
+  useEffect(() => {
+    // Only push to history if the elements have changed
+    if (JSON.stringify(designElements) !== JSON.stringify(prevDesignElementsRef.current)) {
+      const newHistory = history.slice(0, historyIndex + 1);
+      const newElements = JSON.parse(JSON.stringify(designElements));
+      setHistory([...newHistory, newElements]);
+      setHistoryIndex(newHistory.length);
+      prevDesignElementsRef.current = newElements;
     }
-  }
+  }, [designElements, history, historyIndex]);
 
-  // sanitize & normalize design elements before sending to server
-  async function sanitizeDesignElements(
-    elements = [],
-    canvasSizeLocal = { width: 600, height: 600 }
-  ) {
-    const sanitized = [];
 
-    for (const el of elements) {
-      // shallow copy
-      const e = { ...el };
-
-      // remove functions/refs
-      Object.keys(e).forEach((k) => {
-        if (typeof e[k] === "function") delete e[k];
-      });
-
-      // Ensure numeric properties exist and are numbers. Use defaults where missing.
-      if (!Number.isFinite(e.x)) e.x = 0;
-      if (!Number.isFinite(e.y)) e.y = 0;
-      if (!Number.isFinite(e.width))
-        e.width = Math.min(200, canvasSizeLocal.width || 600);
-      if (!Number.isFinite(e.height))
-        e.height = Math.min(200, canvasSizeLocal.height || 600);
-
-      // Convert blob: URLs to base64 so server receives actual bytes
-      if (typeof e.content === "string" && e.content.startsWith("blob:")) {
-        const dataUrl = await blobUrlToDataUrl(e.content);
-        if (dataUrl) {
-          e.content = dataUrl;
-        } else {
-          delete e.content;
-        }
-      }
-
-      // Prune deeply non-serializable parts (defensive)
-      try {
-        JSON.stringify(e);
-      } catch (err) {
-        for (const key of Object.keys(e)) {
-          try {
-            JSON.stringify(e[key]);
-          } catch {
-            delete e[key];
-          }
-        }
-      }
-
-      sanitized.push(e);
-    }
-
-    return sanitized;
-  }
-
-  // Replace the existing saveDesign function body with this version
-  const saveDesign = async () => {
-    if (!productId) {
-      alert("No product selected.");
-      return;
-    }
-    if (!projectName) {
-      alert("Project name required.");
-      return;
-    }
-    setIsSaving(true);
-
-    try {
-      const canvasEl = document.querySelector(".canvas-container");
-      if (!canvasEl) throw new Error("Canvas element not found.");
-
-      // create preview image using html2canvas
-      const canvas = await html2canvas(canvasEl, {
-        backgroundColor:
-          typeof canvasBackground === "string" ? canvasBackground : "#ffffff",
-        useCORS: true,
-        allowTaint: true,
-      });
-      const previewDataUrl = canvas.toDataURL("image/png");
-      const previewBlob = await (await fetch(previewDataUrl)).blob();
-
-      // sanitize elements (this will convert blob: urls into base64 dataURL)
-      const sanitizedElements = await sanitizeDesignElements(
-        designElements,
-        canvasSize
-      );
-
-      // build form data
-      const data = new FormData();
-      data.append("projectName", projectName);
-      data.append("canvasShape", canvasShape);
-      data.append("canvasSize", JSON.stringify(canvasSize));
-      data.append(
-        "canvasBackground",
-        typeof canvasBackground === "string"
-          ? canvasBackground
-          : JSON.stringify(canvasBackground)
-      );
-      data.append("designElements", JSON.stringify(sanitizedElements));
-      data.append("productId", productId);
-      data.append("previewImage", previewBlob, "preview.png");
-
-      // Try fetching existing design from BACKEND (use API_BASE_URL)
-      let existingDesignId = null;
-      try {
-        const getResp = await axios.get(
-          `${API_BASE_URL}/designs/product/${productId}`
-        );
-        if (getResp?.data?.success && getResp.data.data) {
-          existingDesignId = getResp.data.data._id;
-        }
-      } catch (err) {
-        // treat 404 as "no existing design" — ignore other errors
-        if (err.response?.status && err.response.status !== 404) throw err;
-      }
-
-      let resp;
-      if (existingDesignId || designIdState) {
-        const idToUse = existingDesignId || designIdState;
-        resp = await axios.put(`${API_BASE_URL}/designs/${idToUse}`, data, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
-        if (resp?.data?.data?._id) setDesignIdState(resp.data.data._id);
-      } else {
-        resp = await axios.post(`${API_BASE_URL}/designs`, data, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
-        if (resp?.data?.data?._id) setDesignIdState(resp.data.data._id);
-      }
-
-      if (resp?.data?.success) {
-        setHasUnsavedChanges(false);
-        alert("Design saved!");
-      } else {
-        throw new Error(resp?.data?.message || "Unexpected server response");
-      }
-    } catch (err) {
-      console.error("Error saving design:", err);
-      const msg = err.response?.data?.message || err.message || "Save failed";
-      alert(`Save error: ${msg}`);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleCanvasDragStart = (e) => {
-    if (!selectedElementId && e.target === canvasRef.current) {
-      setIsDragging(true);
-      e.preventDefault();
-    }
-  };
-
-  const handleCanvasDrag = (e) => {
-    if (isDragging && canvasRef.current) {
-      const dx = e.movementX;
-      const dy = e.movementY;
-      setCanvasPosition((prev) => ({
-        x: prev.x + dx,
-        y: prev.y + dy,
-      }));
-    }
-  };
-
-  const handleCanvasDragEnd = () => setIsDragging(false);
-
-  const handleWheelZoom = (e) => {
+  const handleWheelZoom = useCallback((e) => {
     if (e.ctrlKey) {
       e.preventDefault();
       const delta = e.deltaY > 0 ? -2 : 2;
       setZoomLevel((prev) => Math.min(300, Math.max(10, prev + delta)));
     }
-  };
-
-  const handleKeyDown = (e) => {
-    if (e.key.startsWith("Arrow") && canvasRef.current) {
-      e.preventDefault();
-      const step = e.shiftKey ? 50 : 10;
-      const moves = {
-        ArrowUp: { y: -step },
-        ArrowDown: { y: step },
-        ArrowLeft: { x: -step },
-        ArrowRight: { x: step },
-      };
-      setCanvasPosition((prev) => ({
-        x: prev.x + (moves[e.key]?.x || 0),
-        y: prev.y + (moves[e.key]?.y || 0),
-      }));
-    }
-  };
-
-  useEffect(() => {
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
+
+  // New: Debounced save trigger
+  const saveTimeout = useRef(null);
+  const triggerSave = useCallback(() => {
+    if (saveTimeout.current) {
+      clearTimeout(saveTimeout.current);
+    }
+    saveTimeout.current = setTimeout(() => {
+      saveDesign();
+    }, 1000); // Debounce by 1 second
+  }, [saveDesign]);
+
+  // Updated addDesignElement with triggerSave
+  const addDesignElementWithSave = useCallback(
+    (element) => {
+      addDesignElement(element);
+      triggerSave();
+    },
+    [addDesignElement, triggerSave]
+  );
+
+  // Updated updateDesignElement with triggerSave
+  const updateDesignElementWithSave = useCallback(
+    (id, updates) => {
+      updateDesignElement(id, updates);
+      triggerSave();
+    },
+    [updateDesignElement, triggerSave]
+  );
+
+  // Updated deleteDesignElement with triggerSave
+  const deleteDesignElementWithSave = useCallback(
+    (id) => {
+      deleteDesignElement(id);
+      triggerSave();
+    },
+    [deleteDesignElement, triggerSave]
+  );
+
+  // Updated updateCanvasBackground with triggerSave
+  const updateCanvasBackgroundWithSave = useCallback(
+    (newBackground) => {
+      updateCanvasBackground(newBackground);
+      triggerSave();
+    },
+    [updateCanvasBackground, triggerSave]
+  );
+
+  // Wrapped setCanvasSize
+  const setCanvasSizeWithSave = useCallback(
+    (size) => {
+      setCanvasSize(size);
+      triggerSave();
+    },
+    [triggerSave]
+  );
+
+  // Wrapped setCanvasShape
+  const setCanvasShapeWithSave = useCallback(
+    (shape) => {
+      setCanvasShape(shape);
+      triggerSave();
+    },
+    [triggerSave]
+  );
 
   return (
     <DesignContext.Provider
@@ -665,9 +622,9 @@ const DesignToolPage = () => {
         projectName,
         setProjectName,
         designElements,
-        addDesignElement,
-        updateDesignElement,
-        deleteDesignElement,
+        addDesignElement: addDesignElementWithSave,
+        updateDesignElement: updateDesignElementWithSave,
+        deleteDesignElement: deleteDesignElementWithSave,
         selectedElementId,
         setSelectedElementId,
         currentView,
@@ -675,14 +632,12 @@ const DesignToolPage = () => {
         zoomLevel,
         setZoomLevel,
         canvasSize,
-        setCanvasSize,
+        setCanvasSize: setCanvasSizeWithSave,
         canvasShape,
-        setCanvasShape,
+        setCanvasShape: setCanvasShapeWithSave,
         canvasBackground,
-        updateCanvasBackground,
+        updateCanvasBackground: updateCanvasBackgroundWithSave,
         canvasRef,
-        canvasPosition,
-        setCanvasPosition,
         undo,
         redo,
         canUndo,
@@ -692,7 +647,7 @@ const DesignToolPage = () => {
         isSaving,
         isIconModalOpen,
         setIsIconModalOpen,
-        productId,
+        productId: productIdFromParams,
         isCreating,
         isEditing,
         setIsEditing,
@@ -717,15 +672,9 @@ const DesignToolPage = () => {
               style={{
                 width: `${canvasSize.width}px`,
                 height: `${canvasSize.height}px`,
-                transform: `translate(${canvasPosition.x}px, ${
-                  canvasPosition.y
-                }px) scale(${zoomLevel / 100})`,
+                transform: `scale(${zoomLevel / 100})`,
                 transformOrigin: "center center",
               }}
-              onMouseDown={handleCanvasDragStart}
-              onMouseMove={handleCanvasDrag}
-              onMouseUp={handleCanvasDragEnd}
-              onMouseLeave={handleCanvasDragEnd}
               onWheel={handleWheelZoom}
             >
               <Canvas />

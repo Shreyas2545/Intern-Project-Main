@@ -52,7 +52,6 @@ const Favorites = () => {
 
   return (
     <>
-      <Header />
       <motion.div
         className="relative w-full min-h-screen bg-gradient-to-br from-white to-gray-50 bg-[url('https://www.transparenttextures.com/patterns/light-paper-fibers.png')]"
         initial={{ opacity: 0 }}
@@ -239,7 +238,7 @@ const Favorites = () => {
           <FaArrowUp />
         </motion.button>
       )}
-      <Footer />
+      
     </>
   );
 };

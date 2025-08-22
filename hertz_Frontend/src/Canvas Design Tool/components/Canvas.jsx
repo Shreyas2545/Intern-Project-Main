@@ -18,9 +18,16 @@ import IconToolbar from "./pages/IconToolbar";
 import IconLibraryModal from "./pages/IconLibraryModal";
 import { FaExclamationTriangle } from "react-icons/fa";
 
-// Optimized ShapeRenderer with memo
 const ShapeRenderer = memo(({ element }) => {
-  const { shapeType, fillColor, strokeColor, strokeWidth, opacity } = element;
+  const {
+    shapeType,
+    fillColor,
+    strokeColor,
+    strokeWidth,
+    strokeStyle,
+    opacity,
+    flip,
+  } = element;
 
   const finalFill =
     shapeType === "line" || shapeType === "arrow" ? "none" : fillColor;
@@ -30,9 +37,19 @@ const ShapeRenderer = memo(({ element }) => {
       fill: finalFill,
       stroke: strokeColor || "transparent",
       strokeWidth: strokeWidth || 0,
+      strokeDasharray:
+        strokeStyle === "dashed"
+          ? "5,5"
+          : strokeStyle === "dotted"
+          ? "2,2"
+          : "none",
       opacity: opacity || 1,
+      transform: flip
+        ? `scale(${flip === "horizontal" ? "-1,1" : "1,-1"})`
+        : "none",
+      transformOrigin: "center",
     }),
-    [finalFill, strokeColor, strokeWidth, opacity]
+    [finalFill, strokeColor, strokeWidth, strokeStyle, opacity, flip]
   );
 
   const SvgDefs = useCallback(
@@ -170,60 +187,62 @@ const ElementRenderer = memo(
         textAlign: element.textAlign || "center",
         lineHeight: 1.4,
         cursor: element.id === editingId ? "text" : "default",
-        opacity: element.opacity,
+        opacity: element.opacity || 1,
+        border:
+          element.stroke && element.strokeWidth
+            ? `${element.strokeWidth}px solid ${element.stroke}`
+            : "none",
+        borderRadius: element.borderRadius ? `${element.borderRadius}px` : "0",
+        transform: element.isCurved ? `rotateX(20deg)` : "none", // Simplified curve effect
       }),
-      [element, editingId]
-    );
-
-    const imageStyle = useMemo(
-      () => ({
-        opacity: element.opacity,
-        borderRadius: `${element.borderRadius || 0}px`,
-        filter: element.filter || "none",
-      }),
-      [element.opacity, element.borderRadius, element.filter]
-    );
-
-    const iconStyle = useMemo(
-      () => ({
-        color: element.color || "#4f46e5",
-        opacity: element.opacity,
-        fontSize: Math.min(element.width, element.height) * 0.8,
-      }),
-      [element.color, element.opacity, element.width, element.height]
+      [
+        element.fontFamily,
+        element.fontSize,
+        element.fontWeight,
+        element.fontStyle,
+        element.textDecoration,
+        element.color,
+        element.backgroundColor,
+        element.textAlign,
+        element.opacity,
+        element.stroke,
+        element.strokeWidth,
+        element.borderRadius,
+        element.isCurved,
+        editingId,
+        element.id,
+      ]
     );
 
     switch (element.type) {
       case "text":
         return (
           <div
-            ref={element.id === editingId ? editableRef : null}
             contentEditable={element.id === editingId}
             suppressContentEditableWarning
             onBlur={handleTextBlur}
-            className={`w-full h-full flex items-center justify-center p-1 whitespace-pre-wrap break-words outline-none transition-all duration-200 ${
-              element.id === editingId
-                ? "ring-2 ring-blue-400 bg-blue-50/30 rounded-xl"
-                : ""
-            }`}
+            ref={element.id === editingId ? editableRef : null}
+            className="w-full h-full flex items-center justify-center whitespace-pre-wrap break-words select-none"
             style={textStyle}
           >
-            {element.content || "Double-click to edit"}
+            {element.content || "Text"}
           </div>
         );
 
       case "image":
         return (
-          <div className="w-full h-full flex items-center justify-center">
-            <img
-              src={element.content}
-              alt="User uploaded content"
-              draggable={false}
-              className="w-full h-full object-cover pointer-events-none"
-              style={imageStyle}
-              onError={handleImageError}
-            />
-          </div>
+          <img
+            src={element.content}
+            alt="User uploaded content"
+            draggable={false}
+            className="w-full h-full object-cover pointer-events-none"
+            style={{
+              opacity: element.opacity || 1,
+              borderRadius: `${element.borderRadius || 0}px`,
+              filter: element.filter || "none",
+            }}
+            onError={handleImageError}
+          />
         );
 
       case "graphic":
@@ -242,20 +261,20 @@ const ElementRenderer = memo(
       case "icon":
         const IconComponent = element.icon;
         return IconComponent ? (
-          <div className="w-full h-full flex items-center justify-center">
-            <IconComponent
-              className="pointer-events-none drop-shadow-sm"
-              style={iconStyle}
-            />
-          </div>
+          <IconComponent
+            className="w-full h-full pointer-events-none drop-shadow-sm"
+            style={{
+              color: element.color || "#4f46e5",
+              opacity: element.opacity || 1,
+              fontSize: Math.min(element.width, element.height) * 0.8,
+            }}
+          />
         ) : null;
 
       case "table":
         return (
-          <div className="w-full h-full border border-gray-400">
-            <div className="text-center text-gray-500 text-xs p-2">
-              Table: {element.rows} rows, {element.cols} columns
-            </div>
+          <div className="w-full h-full border border-gray-400 bg-white flex items-center justify-center">
+            <span className="text-xs text-gray-500">Table Element</span>
           </div>
         );
 
@@ -264,38 +283,6 @@ const ElementRenderer = memo(
     }
   }
 );
-
-const SelectionHandles = memo(({ isVisible, isLocked }) => {
-  if (!isVisible || isLocked) return null;
-  return (
-    <AnimatePresence>
-      {isVisible && !isLocked && (
-        <>
-          {[-2.5, -2.5, -2.5, -2.5].map((pos, i) => (
-            <motion.div
-              key={i}
-              initial={{ scale: 0, rotate: -45 }}
-              animate={{ scale: 1, rotate: 0 }}
-              exit={{ scale: 0, rotate: -45 }}
-              transition={{ delay: i * 0.02, duration: 0.1 }}
-              className={`absolute w-6 h-6 bg-blue-500 border-2 border-white rounded-full shadow-lg ${
-                i === 0
-                  ? "-top-3 -left-3"
-                  : i === 1
-                  ? "-top-3 -right-3"
-                  : i === 2
-                  ? "-bottom-3 -left-3"
-                  : i === 3
-                  ? "-bottom-3 -right-3"
-                  : ""
-              }`}
-            />
-          ))}
-        </>
-      )}
-    </AnimatePresence>
-  );
-});
 
 const RndElement = memo(
   ({
@@ -310,7 +297,6 @@ const RndElement = memo(
   }) => {
     const handleDragStop = useCallback(
       (e, d) => {
-        if (element.locked) return;
         const newX = Math.max(
           0,
           Math.min(d.x, canvasSize.width - element.width)
@@ -323,7 +309,6 @@ const RndElement = memo(
       },
       [
         element.id,
-        element.locked,
         element.width,
         element.height,
         canvasSize,
@@ -332,267 +317,138 @@ const RndElement = memo(
     );
 
     const handleResizeStop = useCallback(
-      (e, dir, ref, delta, pos) => {
-        if (element.locked) return;
-        const w = parseInt(ref.style.width, 10);
-        const h = parseInt(ref.style.height, 10);
-        const newX = Math.max(0, Math.min(pos.x, canvasSize.width - w));
-        const newY = Math.max(0, Math.min(pos.y, canvasSize.height - h));
+      (e, direction, ref, delta, position) => {
         updateDesignElement(element.id, {
-          x: newX,
-          y: newY,
-          width: w,
-          height: h,
+          width: ref.offsetWidth,
+          height: ref.offsetHeight,
+          x: position.x,
+          y: position.y,
         });
       },
-      [element.id, element.locked, canvasSize, updateDesignElement]
+      [element.id, updateDesignElement]
     );
 
-    const handleClick = useCallback(
-      (e) => {
-        e.stopPropagation();
-        setSelectedElementId(element.id);
-        if (element.type !== "text") setEditingId(null);
-      },
-      [element.id, element.type, setSelectedElementId, setEditingId]
-    );
-
-    const handleDoubleClick = useCallback(
-      (e) => {
-        e.stopPropagation();
-        if (!element.locked && element.type === "text") {
-          setEditingId(element.id);
-        }
-      },
-      [element.id, element.locked, element.type, setEditingId]
-    );
-
-    const transformString = useMemo(() => {
-      let transform = "";
-      if (element.rotation) transform += `rotate(${element.rotation}deg) `;
-      if (element.transform) transform += element.transform;
-      return transform;
-    }, [element.rotation, element.transform]);
-
-    const rndStyle = useMemo(
-      () => ({
-        zIndex: element.zIndex || 1,
-        border: isSelected ? "2px solid #3B82F6" : "2px solid transparent",
-        borderRadius: 12,
-        cursor: element.locked ? "not-allowed" : "pointer",
-        transform: transformString,
-        transition: "all 0.1s ease",
-        boxShadow: isSelected
-          ? "0 0 30px rgba(59, 130, 246, 0.4), 0 0 0 1px rgba(59, 130, 246, 0.2)"
-          : element.type !== "text"
-          ? "0 4px 12px rgba(0, 0, 0, 0.05)"
-          : "none",
-      }),
-      [
-        element.zIndex,
-        element.locked,
-        element.type,
-        transformString,
-        isSelected,
-      ]
-    );
-
-    const containerStyle = useMemo(
-      () => ({
-        opacity: element.opacity || 1,
-        borderRadius: 8,
-      }),
-      [element.opacity]
-    );
+    const handleDoubleClick = useCallback(() => {
+      if (element.type === "text" && !element.locked) {
+        setEditingId(element.id);
+      }
+    }, [element.id, element.type, element.locked, setEditingId]);
 
     return (
       <Rnd
-        key={element.id}
         size={{ width: element.width, height: element.height }}
         position={{ x: element.x, y: element.y }}
-        bounds="parent"
-        enableResizing={!element.locked && !isEditing}
-        disableDragging={element.locked}
         onDragStop={handleDragStop}
         onResizeStop={handleResizeStop}
-        onClick={handleClick}
+        disableDragging={element.locked}
+        enableResizing={!element.locked}
+        bounds="parent"
+        className={`absolute ${isSelected ? "border-2 border-blue-500" : ""}`}
+        style={{
+          zIndex: element.zIndex || 0,
+          transform: `rotate(${element.rotation || 0}deg)`,
+        }}
+        onClick={() => setSelectedElementId(element.id)}
         onDoubleClick={handleDoubleClick}
-        style={rndStyle}
       >
-        <div
-          className="relative w-full h-full flex items-center justify-center overflow-hidden"
-          style={containerStyle}
-        >
-          <SelectionHandles isVisible={isSelected} isLocked={element.locked} />
-
-          {element.locked && (
-            <motion.div
-              initial={{ scale: 0, rotate: -15 }}
-              animate={{ scale: 1, rotate: 0 }}
-              className="absolute top-2 right-2 z-10 px-3 py-1.5 bg-red-500 text-white font-bold rounded-full shadow-lg text-xs select-none"
-            >
-              LOCKED
-            </motion.div>
-          )}
-
-          {isSelected && (
-            <motion.div
-              initial={{ opacity: 0, y: -8, scale: 0.9 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -8, scale: 0.9 }}
-              className="absolute -top-10 left-1/2 -translate-x-1/2 bg-blue-600 text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg uppercase tracking-wider"
-            >
-              {element.type}
-            </motion.div>
-          )}
-
-          <ElementRenderer
-            element={element}
-            editingId={isEditing ? element.id : null}
-            editableRef={editableRef}
-            updateDesignElement={updateDesignElement}
-            setEditingId={setEditingId}
-          />
-        </div>
+        <ElementRenderer
+          element={element}
+          editingId={isEditing ? element.id : null}
+          editableRef={editableRef}
+          updateDesignElement={updateDesignElement}
+          setEditingId={setEditingId}
+        />
       </Rnd>
     );
   }
 );
 
-const toolbarVariants = {
-  hidden: { opacity: 0, y: -12, scale: 0.96 },
-  visible: { opacity: 1, y: 0, scale: 1 },
-};
-
 const Canvas = () => {
   const {
     designElements,
-    updateDesignElement,
     selectedElementId,
     setSelectedElementId,
-    currentView,
-    zoomLevel,
-    canvasSize,
-    setCanvasSize,
+    updateDesignElement,
     deleteDesignElement,
-    addDesignElement,
+    canvasSize,
     canvasBackground,
+    currentView,
     isIconModalOpen,
     setIsIconModalOpen,
+    addDesignElement,
   } = useContext(DesignContext);
 
-  const [editingId, setEditingId] = useState(null);
   const canvasInnerRef = useRef(null);
   const editableRef = useRef(null);
+  const [editingId, setEditingId] = useState(null);
 
-  const selectedElement = useMemo(() => {
-    return selectedElementId
-      ? designElements.find((e) => e.id === selectedElementId)
-      : null;
-  }, [selectedElementId, designElements]);
+  const selectedElement = designElements.find(
+    (el) => el.id === selectedElementId
+  );
 
-  const sortedElements = useMemo(() => {
-    return designElements
-      .filter((e) => !e.deleted)
-      .sort((a, b) => (a.zIndex || 1) - (b.zIndex || 1));
-  }, [designElements]);
+  const sortedElements = useMemo(
+    () =>
+      designElements
+        .filter((el) => el.view === currentView || !el.view)
+        .sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0)),
+    [designElements, currentView]
+  );
 
   const canvasBackgroundStyle = useMemo(() => {
-    if (!canvasBackground) return { backgroundColor: "#FFFFFF" };
-    switch (canvasBackground.type) {
-      case "color":
-        return { backgroundColor: canvasBackground.value };
-      case "gradient":
-        const directions = {
-          "to-r": "to right",
-          "to-l": "to left",
-          "to-b": "to bottom",
-          "to-t": "to top",
-        };
-        const direction = directions[canvasBackground.direction] || "135deg";
-        return {
-          background: `linear-gradient(${direction}, ${canvasBackground.colors[0]}, ${canvasBackground.colors[1]})`,
-        };
-      case "image":
-        return {
-          backgroundImage: `url(${canvasBackground.value})`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          backgroundRepeat: "no-repeat",
-        };
-      default:
-        return { backgroundColor: "#FFFFFF" };
+    if (typeof canvasBackground === "string") {
+      return { background: canvasBackground };
+    } else if (canvasBackground?.type === "gradient") {
+      const { colors, angle = 90 } = canvasBackground;
+      return {
+        background: `linear-gradient(${angle}deg, ${colors.join(", ")})`,
+      };
     }
+    return { background: "#ffffff" };
   }, [canvasBackground]);
 
-  useEffect(() => {
-    if (!canvasSize) {
-      setCanvasSize({ width: 1050, height: 600 });
-    }
-  }, [canvasSize, setCanvasSize]);
-
-  useEffect(() => {
-    if (editingId && editableRef.current) {
-      const el = editableRef.current;
-      el.focus();
-      const range = document.createRange();
-      range.selectNodeContents(el);
-      range.collapse(false);
-      const sel = window.getSelection();
-      sel.removeAllRanges();
-      sel.addRange(range);
-    }
-  }, [editingId]);
+  const toolbarVariants = {
+    hidden: { opacity: 0, y: -20 },
+    visible: { opacity: 1, y: 0 },
+  };
 
   const handleDeselect = useCallback(() => {
     setSelectedElementId(null);
     setEditingId(null);
-  }, [setSelectedElementId]);
+  }, [setSelectedElementId, setEditingId]);
 
   const handleKeyDown = useCallback(
     (e) => {
-      if (!selectedElementId) return;
-      const element = designElements.find((d) => d.id === selectedElementId);
-      if (!element) return;
-
       try {
-        if (
-          (e.key === "Delete" || e.key === "Backspace") &&
-          document.activeElement.contentEditable !== "true"
-        ) {
-          deleteDesignElement(element.id);
-          setEditingId(null);
-          return;
-        }
-
         if (e.key === "Escape") {
           handleDeselect();
           return;
         }
+        if (!selectedElementId) return;
+        const selectedElement = designElements.find(
+          (el) => el.id === selectedElementId
+        );
+        if (!selectedElement) return;
 
-        if (element.type === "text" && e.ctrlKey) {
-          e.preventDefault();
-          const formatMap = {
-            b: {
-              fontWeight: element.fontWeight === "bold" ? "normal" : "bold",
-            },
-            i: {
-              fontStyle: element.fontStyle === "italic" ? "normal" : "italic",
-            },
-            u: {
-              textDecoration:
-                element.textDecoration === "underline" ? "none" : "underline",
-            },
-          };
-          if (formatMap[e.key]) {
-            updateDesignElement(element.id, formatMap[e.key]);
-          }
+        if (e.key === "Delete" && !selectedElement.locked) {
+          deleteDesignElement(selectedElementId);
+          return;
+        }
+
+        const formatMap = {
+          "b+ctrl": { fontWeight: "bold" },
+          "i+ctrl": { fontStyle: "italic" },
+          "u+ctrl": { textDecoration: "underline" },
+        };
+
+        const keyCombo = `${e.key.toLowerCase()}${e.ctrlKey ? "+ctrl" : ""}`;
+        if (formatMap[keyCombo]) {
+          updateDesignElement(selectedElementId, formatMap[keyCombo]);
           return;
         }
 
         if (
           e.key.startsWith("Arrow") &&
-          !element.locked &&
+          !selectedElement.locked &&
           document.activeElement.contentEditable !== "true"
         ) {
           e.preventDefault();
@@ -608,18 +464,18 @@ const Canvas = () => {
             const newX = Math.max(
               0,
               Math.min(
-                element.x + (move.x || 0),
-                canvasSize.width - element.width
+                selectedElement.x + (move.x || 0),
+                canvasSize.width - selectedElement.width
               )
             );
             const newY = Math.max(
               0,
               Math.min(
-                element.y + (move.y || 0),
-                canvasSize.height - element.height
+                selectedElement.y + (move.y || 0),
+                canvasSize.height - selectedElement.height
               )
             );
-            updateDesignElement(element.id, { x: newX, y: newY });
+            updateDesignElement(selectedElementId, { x: newX, y: newY });
           }
         }
       } catch (error) {
@@ -656,7 +512,6 @@ const Canvas = () => {
 
   return (
     <>
-      {/* Toolbar */}
       <AnimatePresence mode="wait">
         {selectedElementId && selectedElement && (
           <motion.div
@@ -710,13 +565,11 @@ const Canvas = () => {
         )}
       </AnimatePresence>
 
-      {/* Icon Library Modal */}
       <IconLibraryModal
         isOpen={isIconModalOpen}
         onClose={() => setIsIconModalOpen(false)}
       />
 
-      {/* Canvas Content */}
       <motion.div
         ref={canvasInnerRef}
         className="absolute inset-0 overflow-hidden will-change-transform"

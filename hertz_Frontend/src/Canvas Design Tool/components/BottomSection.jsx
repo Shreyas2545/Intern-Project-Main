@@ -6,7 +6,7 @@ import { DesignContext } from "./DesignToolPage";
 const ZOOM_LEVELS = [25, 50, 75, 100, 125, 150, 200, 250, 300];
 
 const BottomSection = () => {
-  const { zoomLevel, setZoomLevel } = useContext(DesignContext);
+  const { zoomLevel, setZoomLevel, canvasSize } = useContext(DesignContext);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showView, setShowView] = useState(false);
   const dropdownRef = useRef();
@@ -152,6 +152,14 @@ const BottomSection = () => {
           className="w-48 h-2 bg-blue-100 rounded-lg cursor-pointer accent-blue-500"
         />
         <span className="text-blue-800 font-medium">{zoomLevel}%</span>
+        <div className="flex items-center space-x-2 text-blue-800">
+          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M3 3h18v18H3V3zm2 2v14h14V5H5z" />
+          </svg>
+          <span className="text-sm">
+            {canvasSize.width} x {canvasSize.height} px
+          </span>
+        </div>
         <button
           onClick={(e) => {
             e.stopPropagation();

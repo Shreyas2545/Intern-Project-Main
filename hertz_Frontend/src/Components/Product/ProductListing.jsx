@@ -960,7 +960,6 @@ export default function ProductListing() {
 
   return (
     <>
-      <Header />
       <ToastContainer toasts={toasts} removeToast={removeToast} />
 
       <div className="relative bg-gradient-to-br mb-12 from-gray-900 to-gray-700 text-white py-20 px-4 sm:px-6 lg:px-8 overflow-hidden rounded-b-3xl shadow-2xl">
@@ -1355,7 +1354,6 @@ export default function ProductListing() {
         )}
       </AnimatePresence>
 
-      <Footer />
     </>
   );
 }

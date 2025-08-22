@@ -52,7 +52,7 @@ export default function App() {
               path="/category/:categoryName/:subCategoryName"
               element={<SubCategoryPage />}
             />
-            <Route path="/products" element={<ProductListing />} />
+            <Route path="/category" element={<ProductListing />} />
             <Route path="/products/:productId" element={<ProductDetail />} />
             <Route path="/help" element={<Help />} />
             <Route path="/favorites" element={<Favorites />} />
