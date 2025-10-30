@@ -389,12 +389,12 @@ const Help = () => {
             <div className="space-y-4">
               {[
                 {
-                  question: "How do I track my order?",
+                  question: "How do I track my order ?",
                   answer:
                     "Log into your account and visit the 'Order History' section to track your order status. You will find real-time updates on your shipment there.",
                 },
                 {
-                  question: "What payment methods are accepted?",
+                  question: "What payment methods are accepted ?",
                   answer:
                     "We accept a wide range of payment methods including major credit/debit cards (Visa, MasterCard, Amex), UPI, Net Banking, and select digital wallets for your convenience.",
                 },
