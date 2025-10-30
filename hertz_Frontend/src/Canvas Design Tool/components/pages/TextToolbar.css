@@ -1,0 +1,127 @@
+/* styles.css */
+:root {
+  --swan-sem-space-3: 12px; /* Define the CSS variable used in gap */
+}
+
+._popperContainerStyle_hxy9j_5 {
+  position: absolute;
+  inset: 0px auto auto 0px;
+  transform: translate3d(431px, 58px, 0px);
+}
+
+._contentContainer_hxy9j_12 {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 16px;
+}
+
+._verticalLayoutStyle_hxy9j_24 {
+  flex-direction: column;
+}
+
+._heavyPaddingStyle_hxy9j_28 {
+  padding: 24px;
+}
+
+._range_13fvt_5 {
+  width: 100%;
+}
+
+._valueInput_13fvt_1 {
+  width: 60px;
+}
+
+.swan-display-flex {
+  display: flex;
+}
+
+.swan-p-3 {
+  padding: 12px;
+}
+
+.swan-m-2 {
+  margin: 8px;
+}
+
+.swan-px-0 {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.swan-ml-3 {
+  margin-left: 12px;
+}
+
+.swan-compact-mode {
+  min-width: 0;
+}
+
+.swan-button {
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+.swan-button-skin-tertiary {
+  color: #333;
+}
+
+.swan-button-round {
+  border-radius: 50%;
+}
+
+.swan-button-with-icon-left svg {
+  margin-right: 4px;
+}
+
+.swan-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+.FontFamilyTool_fontFamilyTool__G8JmE {
+  display: flex;
+  align-items: center;
+}
+
+.FontFamilyTool_selectedFont__tySHm {
+  margin-left: 4px;
+}
+
+.FontSizeSelector_fontSizeInputContainer__ywQlP {
+  display: flex;
+  align-items: center;
+}
+
+.swan-combobox-container {
+  position: relative;
+}
+
+.swan-combobox {
+  padding: 4px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.swan-input {
+  padding: 4px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.VerticalDivider_verticalDivider__YHhZf {
+  width: 1px;
+  background: #e0e0e0;
+  margin: 0 12px;
+}
+
+._buttonIsExpandedStyle_hxy9j_33 {
+  position: relative;
+}
