@@ -376,7 +376,7 @@ const Help = () => {
                 ))
               ) : (
                 <p className="col-span-full text-center text-gray-600 text-lg">
-                  No topics found for your search.
+                  No topics found for your search...
                 </p>
               )}
             </div>
